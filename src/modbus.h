@@ -110,6 +110,12 @@ MODBUS_BEGIN_DECLS
  */
 #define MODBUS_MAX_ADU_LENGTH              260
 
+/*
+ * Confirmation storage
+ * Must be > 1
+ */
+#define MODBUS_CONFIRMATION_QUEUE_N        (25)
+
 /* Random number to avoid errno conflicts */
 #define MODBUS_ENOBASE 112345678
 
