@@ -225,7 +225,7 @@ MODBUS_API int modbus_write_bit_nb(modbus_t *ctx, int addr, int status, confirma
 MODBUS_API int modbus_write_register(modbus_t *ctx, int reg_addr, const uint16_t value);
 MODBUS_API int modbus_write_register_nb(modbus_t *ctx, int addr, const uint16_t value, confirmation_user_cb user_cb, void * user_ctx);
 MODBUS_API int modbus_write_bits(modbus_t *ctx, int addr, int nb, const uint8_t *data);
-MODBUS_API int modbus_write_bits_nb(modbus_t *ctx, int addr, int nb, const uint8_t *src, confirmation_user_cb user_cb, void * user_ctx)
+MODBUS_API int modbus_write_bits_nb(modbus_t *ctx, int addr, int nb, const uint8_t *src, confirmation_user_cb user_cb, void * user_ctx);
 MODBUS_API int modbus_write_registers(modbus_t *ctx, int addr, int nb, const uint16_t *data);
 MODBUS_API int modbus_write_registers_nb(modbus_t *ctx, int addr, int nb, const uint16_t *src, confirmation_user_cb user_cb, void * user_ctx);
 MODBUS_API int modbus_mask_write_register(modbus_t *ctx, int addr, uint16_t and_mask, uint16_t or_mask);
