@@ -1076,8 +1076,8 @@ static int read_io_status(modbus_t *ctx, int function,
     int rc;
     int req_length;
 
-    uint8_t req[_MIN_REQ_LENGTH];
-    uint8_t rsp[MAX_MESSAGE_LENGTH];
+    uint8_t req[_MIN_REQ_LENGTH] = {0};
+    uint8_t rsp[MAX_MESSAGE_LENGTH] = {0};
 
     req_length = ctx->backend->build_request_basis(ctx, function, addr, nb, req);
 
@@ -1192,8 +1192,8 @@ static int read_registers(modbus_t *ctx, int function, int addr, int nb,
 {
     int rc;
     int req_length;
-    uint8_t req[_MIN_REQ_LENGTH];
-    uint8_t rsp[MAX_MESSAGE_LENGTH];
+    uint8_t req[_MIN_REQ_LENGTH] = {0};
+    uint8_t rsp[MAX_MESSAGE_LENGTH] = {0};
 
     if (nb > MODBUS_MAX_READ_REGISTERS) {
         if (ctx->debug) {
@@ -1610,8 +1610,8 @@ int modbus_write_and_read_registers_nb(modbus_t *ctx,
     int req_length;
     int i;
     int byte_count;
-    uint8_t req[MAX_MESSAGE_LENGTH];
-    uint8_t rsp[MAX_MESSAGE_LENGTH];
+    uint8_t req[MAX_MESSAGE_LENGTH] = {0};
+    uint8_t rsp[MAX_MESSAGE_LENGTH] = {0};
 
     if (ctx == NULL) {
         errno = EINVAL;
