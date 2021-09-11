@@ -175,6 +175,9 @@ typedef struct _modbus_mapping_t {
     uint16_t *tab_registers;
 } modbus_mapping_t;
 
+struct confirmation_params;
+typedef void (*confirmation_user_cb)(struct confirmation_params *const params, void *user_ctx);
+
 typedef enum
 {
     MODBUS_ERROR_RECOVERY_NONE          = 0,
