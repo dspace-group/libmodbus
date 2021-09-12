@@ -1683,14 +1683,13 @@ int modbus_write_and_read_registers(modbus_t *ctx,
 
 static int _modbus_report_slave_id__confirmation(modbus_t *ctx, struct confirmation_params * param) {
     int i;
-        int offset;
-    uint8_t rsp[MAX_MESSAGE_LENGTH];
+    int offset;
 
-    int rc = _modbus_receive_msg(ctx, rsp, MSG_CONFIRMATION);
+    int rc = _modbus_receive_msg(ctx, param->rsp, MSG_CONFIRMATION);
         if (rc == -1)
             return -1;
 
-    rc = check_confirmation(ctx, param->req, rsp, rc);
+    rc = check_confirmation(ctx, param->req, param->rsp, rc);
         if (rc == -1)
             return -1;
 
