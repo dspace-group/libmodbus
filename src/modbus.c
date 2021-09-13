@@ -1856,6 +1856,15 @@ static int confirmation_queue_pop_and_execute(modbus_t *ctx)
     return rc;
 }
 
+int modbus_process_all_rx(modbus_t *ctx) {
+    int rc = 0;
+    while (ctx->confirmation_queue_used_cnt) {
+        confirmation_queue_pop_and_execute(ctx);
+        rc++;
+    }
+    return rc;
+}
+
 /* Define the slave number */
 int modbus_set_slave(modbus_t *ctx, int slave)
 {

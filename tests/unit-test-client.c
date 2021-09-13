@@ -27,6 +27,8 @@ int send_crafted_request(modbus_t *ctx, int function,
                          uint16_t max_value, uint16_t bytes,
                          int backend_length, int backend_offset);
 int equal_dword(uint16_t *tab_reg, const uint32_t value);
+void confirmationFcn_write(struct confirmation_params *const params, void *user_ctx);
+void confirmationFcn_read(struct confirmation_params *const params, void *user_ctx);
 
 #define BUG_REPORT(_cond, _format, _args ...) \
     printf("\nLine %d: assertion error for '%s': " _format "\n", __LINE__, # _cond, ## _args)
@@ -42,6 +44,13 @@ int equal_dword(uint16_t *tab_reg, const uint32_t value);
 
 int equal_dword(uint16_t *tab_reg, const uint32_t value) {
     return ((tab_reg[0] == (value >> 16)) && (tab_reg[1] == (value & 0xFFFF)));
+}
+void confirmationFcn_write(struct confirmation_params *const params, void *user_ctx) {
+    printf("confirmationFcn_write called");
+}
+void confirmationFcn_read(struct confirmation_params *const params, void *user_ctx) {
+    printf("confirmationFcn_read called");
+   
 }
 
 int main(int argc, char *argv[])
@@ -144,6 +153,17 @@ int main(int argc, char *argv[])
 
     /* End single */
 
+    /* Single non-blocking */
+    printf("1/1 modbus_read_bits_nb:\n");
+    for(i = 0; i < MODBUS_CONFIRMATION_QUEUE_N; i++) {
+        rc = modbus_write_bit_nb(ctx, UT_BITS_ADDRESS, ON, confirmationFcn_write, NULL);
+        ASSERT_TRUE(rc == 0, "");
+    }    
+    rc = modbus_process_all_rx(ctx);
+    ASSERT_TRUE(rc == MODBUS_CONFIRMATION_QUEUE_N, "");
+    fflush(stdout);
+    /* End if single non-blocking */
+
     /* Multiple bits */
     {
         uint8_t tab_value[UT_BITS_NB];
@@ -172,6 +192,25 @@ int main(int argc, char *argv[])
     }
     printf("OK\n");
     /* End of multiple bits */
+
+    /* Multiple bits non-blocking */
+    for(i = 0; i < 5; i++) {
+        uint8_t tab_value[UT_BITS_NB];
+        uint8_t src[5];
+        memset(src, i, 5);
+        modbus_set_bits_from_bytes(tab_value, 0, UT_BITS_NB, src);
+
+        rc = modbus_write_bits_nb(ctx, UT_BITS_ADDRESS, UT_BITS_NB, tab_value, confirmationFcn_write, NULL);
+        ASSERT_TRUE(rc == 0, "");
+    }
+    for(i = 0; i < 5; i++) {
+        rc = modbus_read_bits_nb(ctx, UT_BITS_ADDRESS, UT_BITS_NB, tab_rp_bits, confirmationFcn_read, NULL);
+        ASSERT_TRUE(rc == 0, "");
+        
+    }
+    
+
+    /* End of multiple bits non-blocking */
 
     /** DISCRETE INPUTS **/
     rc = modbus_read_input_bits(ctx, UT_INPUT_BITS_ADDRESS,

@@ -89,25 +89,6 @@ typedef struct _modbus_backend {
     void (*free) (modbus_t *ctx);
 } modbus_backend_t;
 
-struct confirmation_params;
-typedef void (*confirmation_user_cb)(struct confirmation_params *const params, void *user_ctx);
-
-struct confirmation_params {
-    struct confirmation_params * prev;
-    struct confirmation_params * next;
-
-    int (*confirmation_cb)(modbus_t *ctx, struct confirmation_params *);
-    uint8_t req[12];
-    uint8_t rsp[260];
-    int nb;
-    uint8_t *dest_ui8;
-    uint16_t *dest_ui16;
-    int max_dest;
-    
-    void * user_ctx;
-    confirmation_user_cb user_cb;
-};
-
 struct _modbus {
     /* Slave address */
     int slave;
