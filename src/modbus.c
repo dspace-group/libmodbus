@@ -1378,7 +1378,7 @@ static int _modbus_write_bits__confirmation(modbus_t *ctx, struct confirmation_p
         return -1;
 
     rc = check_confirmation(ctx, param->req, rsp, rc);
-
+    
     return rc;
 }
 /* Write the bits of the array in the remote device */
@@ -1849,8 +1849,7 @@ static int confirmation_queue_pop_and_execute(modbus_t *ctx)
         return rc;
 
     rc = param.confirmation_cb(ctx, &param);
-    
-    if(param.user_cb != NULL)
+    if(rc >= 0 && param.user_cb != NULL)
         param.user_cb(&param, param.user_ctx);
 
     return rc;

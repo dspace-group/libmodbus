@@ -45,12 +45,16 @@ void confirmationFcn_read(struct confirmation_params *const params, void *user_c
 int equal_dword(uint16_t *tab_reg, const uint32_t value) {
     return ((tab_reg[0] == (value >> 16)) && (tab_reg[1] == (value & 0xFFFF)));
 }
+
+int confirmationFcn_write_counter = 0;
+int confirmationFcn_read_counter = 0;
 void confirmationFcn_write(struct confirmation_params *const params, void *user_ctx) {
-    printf("confirmationFcn_write called");
+    confirmationFcn_write_counter++;
+    printf("confirmationFcn_write called (%d)\n", confirmationFcn_write_counter);
 }
 void confirmationFcn_read(struct confirmation_params *const params, void *user_ctx) {
-    printf("confirmationFcn_read called");
-   
+    confirmationFcn_read_counter++;
+    printf("confirmationFcn_read called (%d)\n", confirmationFcn_read_counter);
 }
 
 int main(int argc, char *argv[])
@@ -154,14 +158,16 @@ int main(int argc, char *argv[])
     /* End single */
 
     /* Single non-blocking */
-    printf("1/1 modbus_read_bits_nb:\n");
+    printf("1/2 modbus_write_bits_nb:\n");
+    confirmationFcn_write_counter = 0;
     for(i = 0; i < MODBUS_CONFIRMATION_QUEUE_N; i++) {
         rc = modbus_write_bit_nb(ctx, UT_BITS_ADDRESS, ON, confirmationFcn_write, NULL);
         ASSERT_TRUE(rc == 0, "");
-    }    
+    }
     rc = modbus_process_all_rx(ctx);
     ASSERT_TRUE(rc == MODBUS_CONFIRMATION_QUEUE_N, "");
-    fflush(stdout);
+    ASSERT_TRUE(confirmationFcn_write_counter == MODBUS_CONFIRMATION_QUEUE_N, "");
+    printf("OK\n");    
     /* End if single non-blocking */
 
     /* Multiple bits */
@@ -194,21 +200,45 @@ int main(int argc, char *argv[])
     /* End of multiple bits */
 
     /* Multiple bits non-blocking */
+    confirmationFcn_write_counter = 0;
+    confirmationFcn_read_counter = 0;
     for(i = 0; i < 5; i++) {
         uint8_t tab_value[UT_BITS_NB];
         uint8_t src[5];
-        memset(src, i, 5);
+        src[0] = 5*i+1;
+        src[1] = 5*i+2;
+        src[2] = 5*i+3;
+        src[3] = 5*i+4;
+        src[4] = 5*i+5;
         modbus_set_bits_from_bytes(tab_value, 0, UT_BITS_NB, src);
 
+        printf("%d/5 modbus_write_bits_nb: \n", i+1);
         rc = modbus_write_bits_nb(ctx, UT_BITS_ADDRESS, UT_BITS_NB, tab_value, confirmationFcn_write, NULL);
         ASSERT_TRUE(rc == 0, "");
     }
     for(i = 0; i < 5; i++) {
+        printf("%d/5 modbus_read_bits_nb: \n", i+1);
         rc = modbus_read_bits_nb(ctx, UT_BITS_ADDRESS, UT_BITS_NB, tab_rp_bits, confirmationFcn_read, NULL);
         ASSERT_TRUE(rc == 0, "");
-        
     }
-    
+    rc = modbus_process_all_rx(ctx);
+    ASSERT_TRUE(rc == 10, ""); // 5 x modbus_write_bits_nb() + 5 x modbus_read_bits_nb()
+    ASSERT_TRUE(confirmationFcn_write_counter == 5, "Confirmation write counter: %d\n", confirmationFcn_write_counter);
+    ASSERT_TRUE(confirmationFcn_read_counter == 5, "Confirmation read counter: %d\n", confirmationFcn_read_counter);
+
+    i = 0;
+    nb_points = UT_BITS_NB;
+    while (nb_points > 0) {
+        int nb_bits = (nb_points > 8) ? 8 : nb_points;
+
+        value = modbus_get_byte_from_bits(tab_rp_bits, i*8, nb_bits);
+        ASSERT_TRUE(value == 21+i, "FAILED (%0X != %0X)\n",
+                    value, 21+i);
+
+        nb_points -= nb_bits;
+        i++;
+    }
+    printf("OK\n");
 
     /* End of multiple bits non-blocking */
 
@@ -231,6 +261,32 @@ int main(int argc, char *argv[])
     }
     printf("OK\n");
 
+    /** DISCRETE INPUTS non-blocking **/
+    confirmationFcn_read_counter = 0;
+    nb_points = (UT_REGISTERS_NB > UT_INPUT_REGISTERS_NB) ? UT_REGISTERS_NB : UT_INPUT_REGISTERS_NB;
+    memset(tab_rp_bits, 0, nb_points * sizeof(uint8_t));
+    rc = modbus_read_input_bits_nb(ctx, UT_INPUT_BITS_ADDRESS, UT_INPUT_BITS_NB, tab_rp_bits, confirmationFcn_read, NULL);
+    printf("1/1 modbus_read_input_bits_nb: ");
+    ASSERT_TRUE(rc == 0, "FAILED (rc: %d)\n", rc);
+
+    rc = modbus_process_all_rx(ctx);
+    ASSERT_TRUE(rc == 1, ""); // 1 x modbus_read_input_bits_nb()
+    ASSERT_TRUE(confirmationFcn_read_counter == 1, "Confirmation read counter: %d\n", confirmationFcn_read_counter);
+
+    i = 0;
+    nb_points = UT_INPUT_BITS_NB;
+    while (nb_points > 0) {
+        int nb_bits = (nb_points > 8) ? 8 : nb_points;
+        value = modbus_get_byte_from_bits(tab_rp_bits, i*8, nb_bits);
+        ASSERT_TRUE(value == UT_INPUT_BITS_TAB[i], "FAILED (%0X != %0X)\n",
+                    value, UT_INPUT_BITS_TAB[i]);
+
+        nb_points -= nb_bits;
+        i++;
+    }
+    printf("OK\n");
+    /** End of DISCRETE INPUTS non-blocking **/
+
     /** HOLDING REGISTERS **/
 
     /* Single register */
@@ -245,6 +301,26 @@ int main(int argc, char *argv[])
     ASSERT_TRUE(tab_rp_registers[0] == 0x1234, "FAILED (%0X != %0X)\n",
                 tab_rp_registers[0], 0x1234);
     /* End of single register */
+
+    /* Single register non-blocking */
+    confirmationFcn_write_counter = 0;
+    confirmationFcn_read_counter = 0;
+    rc = modbus_write_register_nb(ctx, UT_REGISTERS_ADDRESS, 0x5678, confirmationFcn_write, NULL);
+    printf("1/2 modbus_write_register_nb: ");
+    ASSERT_TRUE(rc == 0, "");
+
+    rc = modbus_read_registers_nb(ctx, UT_REGISTERS_ADDRESS, 1, tab_rp_registers, confirmationFcn_read, NULL);
+    printf("2/2 modbus_read_registers: ");
+    ASSERT_TRUE(rc == 0, "");
+
+    rc = modbus_process_all_rx(ctx);
+    ASSERT_TRUE(confirmationFcn_write_counter == 1, "FAILED (write not confirmed)");
+    ASSERT_TRUE(confirmationFcn_read_counter == 1, "FAILED (read not confirmed)");
+
+    ASSERT_TRUE(tab_rp_registers[0] == 0x5678, "FAILED (%0X != %0X)\n",
+                tab_rp_registers[0], 0x5678);
+
+    /* End of Single register non-blocking */
 
     /* Many registers */
     rc = modbus_write_registers(ctx, UT_REGISTERS_ADDRESS,
@@ -295,9 +371,10 @@ int main(int argc, char *argv[])
         ASSERT_TRUE(tab_rp_registers[i] == 0, "FAILED (%0X != %0X)\n",
                     tab_rp_registers[i], 0);
     }
-
     /* End of many registers */
 
+    /* Many registers non-blocking */
+    /* End if Many registers non-blocking*/
 
     /** INPUT REGISTERS **/
     rc = modbus_read_input_registers(ctx, UT_INPUT_REGISTERS_ADDRESS,
