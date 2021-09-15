@@ -27,8 +27,8 @@ int send_crafted_request(modbus_t *ctx, int function,
                          uint16_t max_value, uint16_t bytes,
                          int backend_length, int backend_offset);
 int equal_dword(uint16_t *tab_reg, const uint32_t value);
-void confirmationFcn_write(struct confirmation_params *const params, void *user_ctx);
-void confirmationFcn_read(struct confirmation_params *const params, void *user_ctx);
+void confirmationFcn_write(struct confirmation_params *const params);
+void confirmationFcn_read(struct confirmation_params *const params);
 
 #define BUG_REPORT(_cond, _format, _args ...) \
     printf("\nLine %d: assertion error for '%s': " _format "\n", __LINE__, # _cond, ## _args)
@@ -48,11 +48,11 @@ int equal_dword(uint16_t *tab_reg, const uint32_t value) {
 
 int confirmationFcn_write_counter = 0;
 int confirmationFcn_read_counter = 0;
-void confirmationFcn_write(struct confirmation_params *const params, void *user_ctx) {
+void confirmationFcn_write(struct confirmation_params *const params) {
     confirmationFcn_write_counter++;
     printf("confirmationFcn_write called (%d)\n", confirmationFcn_write_counter);
 }
-void confirmationFcn_read(struct confirmation_params *const params, void *user_ctx) {
+void confirmationFcn_read(struct confirmation_params *const params) {
     confirmationFcn_read_counter++;
     printf("confirmationFcn_read called (%d)\n", confirmationFcn_read_counter);
 }

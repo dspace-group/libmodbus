@@ -1084,12 +1084,12 @@ static int read_io_status(modbus_t *ctx, int function,
     rc = send_msg(ctx, req, req_length);
     if (rc > 0) {
         struct confirmation_params param = {0};
-        param.confirmation_cb = _read_io_status__confirmation;
+        param.__confirmation_cb = _read_io_status__confirmation;
         memcpy(param.req, req, 12 * sizeof(uint8_t));
         memcpy(param.rsp, rsp, 260 * sizeof(uint8_t));
         param.nb = nb;
         param.dest_ui8 = dest;
-        param.user_cb = user_cb;
+        param.__user_cb = user_cb;
         param.user_ctx = user_ctx;
         rc = confirmation_queue_push(ctx, &param);
     }
@@ -1210,11 +1210,11 @@ static int read_registers(modbus_t *ctx, int function, int addr, int nb,
     rc = send_msg(ctx, req, req_length);
     if (rc > 0) {
         struct confirmation_params param = {0};
-        param.confirmation_cb = _read_registers__confirmation;
+        param.__confirmation_cb = _read_registers__confirmation;
         memcpy(param.req, req, 12 * sizeof(uint8_t));
         memcpy(param.rsp, rsp, 260 * sizeof(uint8_t));
         param.dest_ui16 = dest;
-        param.user_cb = user_cb;
+        param.__user_cb = user_cb;
         param.user_ctx = user_ctx;
         rc = confirmation_queue_push(ctx, &param);
     }
@@ -1320,8 +1320,8 @@ static int write_single(modbus_t *ctx, int function, int addr, const uint16_t va
     rc = send_msg(ctx, req, req_length);
     if (rc > 0) {
         struct confirmation_params param = {0};
-        param.confirmation_cb = _write_single__confirmation;
-        param.user_cb = user_cb;
+        param.__confirmation_cb = _write_single__confirmation;
+        param.__user_cb = user_cb;
         param.user_ctx = user_ctx;
         memcpy(param.req, req, 12 * sizeof(uint8_t));
         rc = confirmation_queue_push(ctx, &param);
@@ -1378,7 +1378,7 @@ static int _modbus_write_bits__confirmation(modbus_t *ctx, struct confirmation_p
         return -1;
 
     rc = check_confirmation(ctx, param->req, rsp, rc);
-    
+
     return rc;
 }
 /* Write the bits of the array in the remote device */
@@ -1432,9 +1432,9 @@ int modbus_write_bits_nb(modbus_t *ctx, int addr, int nb, const uint8_t *src, co
     rc = send_msg(ctx, req, req_length);
     if (rc > 0) {
         struct confirmation_params param = {0};
-        param.confirmation_cb = _modbus_write_bits__confirmation;
+        param.__confirmation_cb = _modbus_write_bits__confirmation;
         memcpy(param.req, req, 12 * sizeof(uint8_t));
-        param.user_cb = user_cb;
+        param.__user_cb = user_cb;
         param.user_ctx = user_ctx;
         rc = confirmation_queue_push(ctx, &param);
     }
@@ -1501,9 +1501,9 @@ int modbus_write_registers_nb(modbus_t *ctx, int addr, int nb, const uint16_t *s
     rc = send_msg(ctx, req, req_length);
     if (rc > 0) {
         struct confirmation_params param = {0};
-        param.confirmation_cb = _modbus_write_registers__confirmation;
+        param.__confirmation_cb = _modbus_write_registers__confirmation;
         memcpy(param.req, req, 12 * sizeof(uint8_t));
-        param.user_cb = user_cb;
+        param.__user_cb = user_cb;
         param.user_ctx = user_ctx;
         rc = confirmation_queue_push(ctx, &param);
     }
@@ -1556,9 +1556,9 @@ int modbus_mask_write_register_nb(modbus_t *ctx, int addr, uint16_t and_mask, ui
     rc = send_msg(ctx, req, req_length);
     if (rc > 0) {
         struct confirmation_params param = {0};
-        param.confirmation_cb = _modbus_mask_write_register__confirmation;
+        param.__confirmation_cb = _modbus_mask_write_register__confirmation;
         memcpy(param.req, req, 12 * sizeof(uint8_t));
-        param.user_cb = user_cb;
+        param.__user_cb = user_cb;
         param.user_ctx = user_ctx;
         rc = confirmation_queue_push(ctx, &param);
     }
@@ -1656,11 +1656,11 @@ int modbus_write_and_read_registers_nb(modbus_t *ctx,
     rc = send_msg(ctx, req, req_length);
     if (rc > 0) {
         struct confirmation_params param = {0};
-        param.confirmation_cb = _modbus_write_and_read_registers__confirmation;
+        param.__confirmation_cb = _modbus_write_and_read_registers__confirmation;
         memcpy(param.req, req, 12 * sizeof(uint8_t));
         memcpy(param.rsp, rsp, 260 * sizeof(uint8_t));
         param.dest_ui16 = dest;
-        param.user_cb = user_cb;
+        param.__user_cb = user_cb;
         param.user_ctx = user_ctx;
         rc = confirmation_queue_push(ctx, &param);
     }
@@ -1726,11 +1726,11 @@ int modbus_report_slave_id_nb(modbus_t *ctx, int max_dest, uint8_t *dest, confir
     rc = send_msg(ctx, req, req_length);
     if (rc > 0) {
         struct confirmation_params param = {0};
-        param.confirmation_cb = _modbus_report_slave_id__confirmation;
+        param.__confirmation_cb = _modbus_report_slave_id__confirmation;
         memcpy(param.req, req, 12 * sizeof(uint8_t));
         param.max_dest = max_dest;
         param.dest_ui8 = dest;
-        param.user_cb = user_cb;
+        param.__user_cb = user_cb;
         param.user_ctx = user_ctx;
         rc = confirmation_queue_push(ctx, &param);
     }
@@ -1773,21 +1773,21 @@ void _modbus_init_common(modbus_t *ctx)
     ctx->confirmation_queue_used_start = NULL;
     ctx->confirmation_queue_used_end = ctx->confirmation_queue_used_start;
     ctx->confirmation_queue_unused = (struct confirmation_params *) malloc(sizeof(struct confirmation_params));
-    ctx->confirmation_queue_unused->prev = NULL;
-    ctx->confirmation_queue_unused->next = NULL;
-    ctx->confirmation_queue_unused->confirmation_cb = NULL;
-    ctx->confirmation_queue_unused->user_cb = NULL;
+    ctx->confirmation_queue_unused->__prev = NULL;
+    ctx->confirmation_queue_unused->__next = NULL;
+    ctx->confirmation_queue_unused->__confirmation_cb = NULL;
+    ctx->confirmation_queue_unused->__user_cb = NULL;
     ctx->confirmation_queue_unused->user_ctx = NULL;
     prev = ctx->confirmation_queue_unused;
     for(idx = 0; idx < MODBUS_CONFIRMATION_QUEUE_N; idx++) {
         struct confirmation_params * next = (struct confirmation_params *) malloc(sizeof(struct confirmation_params));
-        next->prev = prev;
-        prev->next = next;
+        next->__prev = prev;
+        prev->__next = next;
         prev = next;
 
-        next->next = NULL;
-        next->confirmation_cb = NULL;
-        next->user_cb = NULL;
+        next->__next = NULL;
+        next->__confirmation_cb = NULL;
+        next->__user_cb = NULL;
         next->user_ctx = NULL;
     }
 }
@@ -1798,19 +1798,19 @@ static int confirmation_queue_push(modbus_t *ctx, const struct confirmation_para
 
     /* get free param from unused queue */
     struct confirmation_params * free_param = ctx->confirmation_queue_unused;
-    ctx->confirmation_queue_unused = free_param->next;
-    ctx->confirmation_queue_unused->prev = NULL;
+    ctx->confirmation_queue_unused = free_param->__next;
+    ctx->confirmation_queue_unused->__prev = NULL;
 
     /* copy params */
     memcpy(free_param, params_in, sizeof(struct confirmation_params));
-    free_param->prev = ctx->confirmation_queue_used_end;
-    free_param->next = NULL;
+    free_param->__prev = ctx->confirmation_queue_used_end;
+    free_param->__next = NULL;
 
     /* push */
     if(ctx->confirmation_queue_used_start == NULL)
         ctx->confirmation_queue_used_start = free_param;
     else
-        ctx->confirmation_queue_used_end->next = free_param;
+        ctx->confirmation_queue_used_end->__next = free_param;
     ctx->confirmation_queue_used_end = free_param;
 
     ctx->confirmation_queue_used_cnt++;
@@ -1827,14 +1827,14 @@ static int confirmation_queue_pop(modbus_t *ctx, struct confirmation_params * co
     memcpy(params_out, used_param, sizeof(struct confirmation_params));
     
     /* pop */
-    ctx->confirmation_queue_used_start = used_param->next;
+    ctx->confirmation_queue_used_start = used_param->__next;
     if(ctx->confirmation_queue_used_start != NULL)
-        ctx->confirmation_queue_used_start->prev = NULL;
+        ctx->confirmation_queue_used_start->__prev = NULL;
     else
         ctx->confirmation_queue_used_end = NULL;
     
-    ctx->confirmation_queue_unused->prev = used_param;
-    used_param->next = ctx->confirmation_queue_unused;
+    ctx->confirmation_queue_unused->__prev = used_param;
+    used_param->__next = ctx->confirmation_queue_unused;
     ctx->confirmation_queue_unused = used_param;
 
     ctx->confirmation_queue_used_cnt--;
@@ -1848,9 +1848,9 @@ static int confirmation_queue_pop_and_execute(modbus_t *ctx)
     if(rc != 0)
         return rc;
 
-    rc = param.confirmation_cb(ctx, &param);
-    if(rc >= 0 && param.user_cb != NULL)
-        param.user_cb(&param, param.user_ctx);
+    rc = param.__confirmation_cb(ctx, &param);
+    if(rc >= 0 && param.__user_cb != NULL)
+        param.__user_cb(&param);
 
     return rc;
 }

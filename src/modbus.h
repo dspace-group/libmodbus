@@ -176,13 +176,16 @@ typedef struct _modbus_mapping_t {
 } modbus_mapping_t;
 
 struct confirmation_params;
-typedef void (*confirmation_user_cb)(struct confirmation_params *const params, void *user_ctx);
+typedef void (*confirmation_user_cb)(struct confirmation_params *const params);
 
 struct confirmation_params {
-    struct confirmation_params * prev;
-    struct confirmation_params * next;
+    /* private */
+    struct confirmation_params * __prev;
+    struct confirmation_params * __next;
+    int (*__confirmation_cb)(modbus_t *ctx, struct confirmation_params *);
+    confirmation_user_cb __user_cb;
 
-    int (*confirmation_cb)(modbus_t *ctx, struct confirmation_params *);
+    /* public */
     uint8_t req[12];
     uint8_t rsp[260];
     int nb;
@@ -191,7 +194,6 @@ struct confirmation_params {
     int max_dest;
     
     void * user_ctx;
-    confirmation_user_cb user_cb;
 };
 
 typedef enum
