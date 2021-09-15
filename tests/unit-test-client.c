@@ -374,9 +374,73 @@ int main(int argc, char *argv[])
     /* End of many registers */
 
     /* Many registers non-blocking */
+    confirmationFcn_write_counter = 0;
+    confirmationFcn_read_counter = 0;
+    rc = modbus_write_registers_nb(ctx, UT_REGISTERS_ADDRESS, UT_REGISTERS_NB, UT_REGISTERS_TAB, confirmationFcn_write, NULL);
+    printf("1/5 modbus_write_registers_nb: ");
+    ASSERT_TRUE(rc == 0, "");
+
+    rc = modbus_read_registers_nb(ctx, UT_REGISTERS_ADDRESS, UT_REGISTERS_NB, tab_rp_registers, confirmationFcn_read, NULL);
+    printf("2/5 modbus_read_registers_nb: ");
+    ASSERT_TRUE(rc == 0, "");
+
+    rc = modbus_process_all_rx(ctx);
+    ASSERT_TRUE(confirmationFcn_write_counter == 1, "FAILED (write not confirmed)");
+    ASSERT_TRUE(confirmationFcn_read_counter == 1, "FAILED (read not confirmed)");
+
+    for (i=0; i < UT_REGISTERS_NB; i++) {
+        ASSERT_TRUE(tab_rp_registers[i] == UT_REGISTERS_TAB[i],
+                    "FAILED (%0X != %0X)\n",
+                    tab_rp_registers[i], UT_REGISTERS_TAB[i]);
+    }
+
+    confirmationFcn_read_counter = 0;
+    rc = modbus_read_registers_nb(ctx, UT_REGISTERS_ADDRESS,
+                               0, tab_rp_registers, confirmationFcn_read, NULL);
+    printf("3/5 modbus_read_registers_nb (0): ");
+    ASSERT_TRUE(rc == 0, "");
+
+    rc = modbus_process_all_rx(ctx);
+    ASSERT_TRUE(rc == 1, "");
+    ASSERT_TRUE(confirmationFcn_read_counter == 0, "FAILED (read confirmed)");
+
+    nb_points = (UT_REGISTERS_NB >
+                 UT_INPUT_REGISTERS_NB) ?
+        UT_REGISTERS_NB : UT_INPUT_REGISTERS_NB;
+    memset(tab_rp_registers, 0, nb_points * sizeof(uint16_t));
+
+    confirmationFcn_read_counter = 0;
+    /* Write registers to zero from tab_rp_registers and store read registers
+       into tab_rp_registers. So the read registers must set to 0, except the
+       first one because there is an offset of 1 register on write. */
+    rc = modbus_write_and_read_registers_nb(ctx,
+                                         UT_REGISTERS_ADDRESS + 1,
+                                         UT_REGISTERS_NB - 1,
+                                         tab_rp_registers,
+                                         UT_REGISTERS_ADDRESS,
+                                         UT_REGISTERS_NB,
+                                         tab_rp_registers, confirmationFcn_read, NULL);
+    printf("4/5 modbus_write_and_read_registers_nb: ");
+    ASSERT_TRUE(rc == 0, "");
+
+    rc = modbus_process_all_rx(ctx);
+    ASSERT_TRUE(rc == 1, "");
+    ASSERT_TRUE(confirmationFcn_read_counter == 1, "FAILED (read/write not confirmed)");
+    ASSERT_TRUE(tab_rp_registers[0] == UT_REGISTERS_TAB[0],
+                "FAILED (%0X != %0X)\n",
+                tab_rp_registers[0], UT_REGISTERS_TAB[0]);
+
+    for (i=1; i < UT_REGISTERS_NB; i++) {
+        ASSERT_TRUE(tab_rp_registers[i] == 0, "FAILED (%0X != %0X)\n",
+                    tab_rp_registers[i], 0);
+    }
     /* End if Many registers non-blocking*/
 
     /** INPUT REGISTERS **/
+    nb_points = (UT_REGISTERS_NB >
+                 UT_INPUT_REGISTERS_NB) ?
+        UT_REGISTERS_NB : UT_INPUT_REGISTERS_NB;
+    memset(tab_rp_registers, 0, nb_points * sizeof(uint16_t));
     rc = modbus_read_input_registers(ctx, UT_INPUT_REGISTERS_ADDRESS,
                                      UT_INPUT_REGISTERS_NB,
                                      tab_rp_registers);
@@ -389,6 +453,29 @@ int main(int argc, char *argv[])
                     tab_rp_registers[i], UT_INPUT_REGISTERS_TAB[i]);
     }
 
+    /** INPUT REGISTERS non-blocking **/
+    confirmationFcn_read_counter = 0;
+    nb_points = (UT_REGISTERS_NB >
+                 UT_INPUT_REGISTERS_NB) ?
+        UT_REGISTERS_NB : UT_INPUT_REGISTERS_NB;
+    memset(tab_rp_registers, 0, nb_points * sizeof(uint16_t));
+    rc = modbus_read_input_registers_nb(ctx, UT_INPUT_REGISTERS_ADDRESS,
+                                     UT_INPUT_REGISTERS_NB,
+                                     tab_rp_registers, confirmationFcn_read, NULL);
+    printf("1/1 modbus_read_input_registers_nb: ");
+    ASSERT_TRUE(rc == 0, "");
+
+    rc = modbus_process_all_rx(ctx);
+    ASSERT_TRUE(rc == 1, "");
+    ASSERT_TRUE(confirmationFcn_read_counter == 1, "FAILED (read not confirmed)");
+
+    for (i=0; i < UT_INPUT_REGISTERS_NB; i++) {
+        ASSERT_TRUE(tab_rp_registers[i] == UT_INPUT_REGISTERS_TAB[i],
+                    "FAILED (%0X != %0X)\n",
+                    tab_rp_registers[i], UT_INPUT_REGISTERS_TAB[i]);
+    }
+    /** End of INPUT REGISTERS non-blocking **/
+
     /* MASKS */
     printf("1/1 Write mask: ");
     rc = modbus_write_register(ctx, UT_REGISTERS_ADDRESS, 0x12);
@@ -398,6 +485,23 @@ int main(int argc, char *argv[])
     ASSERT_TRUE(tab_rp_registers[0] == 0x17,
                 "FAILED (%0X != %0X)\n",
                 tab_rp_registers[0], 0x17);
+    
+    /* MASKS non-blocking */
+    printf("1/1 Write mask: ");
+    rc = modbus_write_register(ctx, UT_REGISTERS_ADDRESS, 0x12);
+    confirmationFcn_write_counter = 0;
+    rc = modbus_mask_write_register_nb(ctx, UT_REGISTERS_ADDRESS, 0xF2, 0x25, confirmationFcn_write, NULL);
+    ASSERT_TRUE(rc == 0, "");
+
+    rc = modbus_process_all_rx(ctx);
+    ASSERT_TRUE(rc == 1, "");
+    ASSERT_TRUE(confirmationFcn_write_counter == 1, "FAILED (write not confirmed)");
+    
+    rc = modbus_read_registers(ctx, UT_REGISTERS_ADDRESS, 1, tab_rp_registers);
+    ASSERT_TRUE(tab_rp_registers[0] == 0x17,
+                "FAILED (%0X != %0X)\n",
+                tab_rp_registers[0], 0x17);
+    /* End of MASKS non-blocking */
 
     printf("\nTEST FLOATS\n");
     /** FLOAT **/
@@ -663,6 +767,18 @@ int main(int argc, char *argv[])
         }
         printf("\n");
     }
+
+    /* Report slave id non-blocking */
+    confirmationFcn_read_counter = 0;
+    rc = modbus_report_slave_id_nb(ctx, NB_REPORT_SLAVE_ID, tab_rp_bits, confirmationFcn_read, NULL);
+    ASSERT_TRUE(rc == 0, "");
+
+    rc = modbus_process_all_rx(ctx);
+    ASSERT_TRUE(rc == 1, "");
+
+    /* Run status indicator is ON */
+    ASSERT_TRUE(tab_rp_bits[1] == 0xFF, "");
+    /* End of Report slave id non-blocking */
 
     /* Save original timeout */
     modbus_get_response_timeout(ctx, &old_response_to_sec, &old_response_to_usec);
