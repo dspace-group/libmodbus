@@ -1041,34 +1041,34 @@ int modbus_reply_exception(modbus_t *ctx, const uint8_t *req,
     }
 }
 
-static int _read_io_status__confirmation(modbus_t *ctx, struct confirmation_params * param) {
-        int i, temp, bit;
-        int pos = 0;
-        int offset;
-        int offset_end;
+static int _read_io_status__confirmation(void * ctx, struct confirmation_params * param) {
+    int i, temp, bit;
+    int pos = 0;
+    int offset;
+    int offset_end;
 
-    int rc = _modbus_receive_msg(ctx, param->rsp, MSG_CONFIRMATION);
-        if (rc == -1)
-            return -1;
+    int rc = _modbus_receive_msg((modbus_t *) ctx, param->rsp, MSG_CONFIRMATION);
+    if (rc == -1)
+        return -1;
 
-    rc = check_confirmation(ctx, param->req, param->rsp, rc);
-        if (rc == -1)
-            return -1;
+    rc = check_confirmation((modbus_t *) ctx, param->req, param->rsp, rc);
+    if (rc == -1)
+        return -1;
 
-        offset = ctx->backend->header_length + 2;
-        offset_end = offset + rc;
-        for (i = offset; i < offset_end; i++) {
-            /* Shift reg hi_byte to temp */
+    offset = ((modbus_t *) ctx)->backend->header_length + 2;
+    offset_end = offset + rc;
+    for (i = offset; i < offset_end; i++) {
+        /* Shift reg hi_byte to temp */
         temp = param->rsp[i];
 
         for (bit = 0x01; (bit & 0xff) && (pos < param->nb);) {
             param->dest_ui8[pos++] = (temp & bit) ? TRUE : FALSE;
-                bit = bit << 1;
-            }
+            bit = bit << 1;
+        }
     }
 
     return rc;
-        }
+}
 /* Reads IO status */
 static int read_io_status(modbus_t *ctx, int function,
                           int addr, int nb, uint8_t *dest, confirmation_user_cb user_cb, void * user_ctx)
@@ -1091,6 +1091,7 @@ static int read_io_status(modbus_t *ctx, int function,
         param.dest_ui8 = dest;
         param.__user_cb = user_cb;
         param.user_ctx = user_ctx;
+        param.est_response_len = compute_response_length_from_request(ctx, req);
         rc = confirmation_queue_push(ctx, &param);
     }
 
@@ -1165,19 +1166,19 @@ int modbus_read_input_bits(modbus_t *ctx, int addr, int nb, uint8_t *dest)
         return nb;
 }
 
-static int _read_registers__confirmation(modbus_t *ctx, struct confirmation_params * param) {
+static int _read_registers__confirmation(void *ctx, struct confirmation_params * param) {
     int offset;
     int i;
 
-    int rc = _modbus_receive_msg(ctx, param->rsp, MSG_CONFIRMATION);
+    int rc = _modbus_receive_msg((modbus_t *) ctx, param->rsp, MSG_CONFIRMATION);
     if (rc == -1)
         return -1;
 
-    rc = check_confirmation(ctx, param->req, param->rsp, rc);
+    rc = check_confirmation((modbus_t *) ctx, param->req, param->rsp, rc);
     if (rc == -1)
         return -1;
 
-    offset = ctx->backend->header_length;
+    offset = ((modbus_t *) ctx)->backend->header_length;
 
     for (i = 0; i < rc; i++) {
         /* shift reg hi_byte to temp OR with lo_byte */
@@ -1216,6 +1217,7 @@ static int read_registers(modbus_t *ctx, int function, int addr, int nb,
         param.dest_ui16 = dest;
         param.__user_cb = user_cb;
         param.user_ctx = user_ctx;
+        param.est_response_len = compute_response_length_from_request(ctx, req);
         rc = confirmation_queue_push(ctx, &param);
     }
 
@@ -1253,7 +1255,7 @@ int modbus_read_registers(modbus_t *ctx, int addr, int nb, uint16_t *dest)
 
     if(rc == 0)
         rc = confirmation_queue_pop_and_execute(ctx);
-    
+
     return rc;
 }
 /* Reads the input registers of remote device and put the data into an array */
@@ -1287,19 +1289,19 @@ int modbus_read_input_registers(modbus_t *ctx, int addr, int nb,
 
     if(rc == 0)
         rc = confirmation_queue_pop_and_execute(ctx);
-    
+
     return rc;
 }
 
-static int _write_single__confirmation(modbus_t *ctx, struct confirmation_params * param) {
+static int _write_single__confirmation(void *ctx, struct confirmation_params * param) {
     /* Used by write_bit and write_register */
     uint8_t rsp[MAX_MESSAGE_LENGTH];
 
-    int rc = _modbus_receive_msg(ctx, rsp, MSG_CONFIRMATION);
+    int rc = _modbus_receive_msg((modbus_t *) ctx, rsp, MSG_CONFIRMATION);
     if (rc == -1)
         return -1;
 
-    rc = check_confirmation(ctx, param->req, rsp, rc);
+    rc = check_confirmation((modbus_t *) ctx, param->req, rsp, rc);
     return rc;
 }
 /* Write a value to the specified register of the remote device.
@@ -1323,6 +1325,7 @@ static int write_single(modbus_t *ctx, int function, int addr, const uint16_t va
         param.__confirmation_cb = _write_single__confirmation;
         param.__user_cb = user_cb;
         param.user_ctx = user_ctx;
+        param.est_response_len = compute_response_length_from_request(ctx, req);
         memcpy(param.req, req, 12 * sizeof(uint8_t));
         rc = confirmation_queue_push(ctx, &param);
     }
@@ -1370,14 +1373,14 @@ int modbus_write_register(modbus_t *ctx, int addr, const uint16_t value)
 
     return rc;
 }
-static int _modbus_write_bits__confirmation(modbus_t *ctx, struct confirmation_params * param) {
+static int _modbus_write_bits__confirmation(void *ctx, struct confirmation_params * param) {
     uint8_t rsp[MAX_MESSAGE_LENGTH];
 
-    int rc = _modbus_receive_msg(ctx, rsp, MSG_CONFIRMATION);
+    int rc = _modbus_receive_msg((modbus_t *) ctx, rsp, MSG_CONFIRMATION);
     if (rc == -1)
         return -1;
 
-    rc = check_confirmation(ctx, param->req, rsp, rc);
+    rc = check_confirmation((modbus_t *) ctx, param->req, rsp, rc);
 
     return rc;
 }
@@ -1436,6 +1439,7 @@ int modbus_write_bits_nb(modbus_t *ctx, int addr, int nb, const uint8_t *src, co
         memcpy(param.req, req, 12 * sizeof(uint8_t));
         param.__user_cb = user_cb;
         param.user_ctx = user_ctx;
+        param.est_response_len = compute_response_length_from_request(ctx, req);
         rc = confirmation_queue_push(ctx, &param);
     }
 
@@ -1451,18 +1455,17 @@ int modbus_write_bits(modbus_t *ctx, int addr, int nb, const uint8_t *src)
     return rc;
 }
 
-static int _modbus_write_registers__confirmation(modbus_t *ctx, struct confirmation_params * param) {
-        uint8_t rsp[MAX_MESSAGE_LENGTH];
+static int _modbus_write_registers__confirmation(void *ctx, struct confirmation_params * param) {
+    uint8_t rsp[MAX_MESSAGE_LENGTH];
 
-    int rc = _modbus_receive_msg(ctx, rsp, MSG_CONFIRMATION);
-        if (rc == -1)
-            return -1;
+    int rc = _modbus_receive_msg((modbus_t *) ctx, rsp, MSG_CONFIRMATION);
+    if (rc == -1)
+        return -1;
 
-    rc = check_confirmation(ctx, param->req, rsp, rc);
+    rc = check_confirmation((modbus_t *) ctx, param->req, rsp, rc);
 
     return rc;
 }
-
 /* Write the values from the array to the registers of the remote device */
 int modbus_write_registers_nb(modbus_t *ctx, int addr, int nb, const uint16_t *src, confirmation_user_cb user_cb, void * user_ctx)
 {
@@ -1505,6 +1508,7 @@ int modbus_write_registers_nb(modbus_t *ctx, int addr, int nb, const uint16_t *s
         memcpy(param.req, req, 12 * sizeof(uint8_t));
         param.__user_cb = user_cb;
         param.user_ctx = user_ctx;
+        param.est_response_len = compute_response_length_from_request(ctx, req);
         rc = confirmation_queue_push(ctx, &param);
     }
 
@@ -1520,16 +1524,16 @@ int modbus_write_registers(modbus_t *ctx, int addr, int nb, const uint16_t *src)
     return rc;
 }
 
-static int _modbus_mask_write_register__confirmation(modbus_t *ctx, struct confirmation_params * param) {
+static int _modbus_mask_write_register__confirmation(void *ctx, struct confirmation_params * param) {
     /* Used by write_bit and write_register */
-        uint8_t rsp[MAX_MESSAGE_LENGTH];
+    uint8_t rsp[MAX_MESSAGE_LENGTH];
 
-    int rc = _modbus_receive_msg(ctx, rsp, MSG_CONFIRMATION);
-        if (rc == -1)
-            return -1;
+    int rc = _modbus_receive_msg((modbus_t *) ctx, rsp, MSG_CONFIRMATION);
+    if (rc == -1)
+        return -1;
 
-    rc = check_confirmation(ctx, param->req, rsp, rc);
-
+    rc = check_confirmation((modbus_t *) ctx, param->req, rsp, rc);
+    
     return rc;
 }
 int modbus_mask_write_register_nb(modbus_t *ctx, int addr, uint16_t and_mask, uint16_t or_mask, confirmation_user_cb user_cb, void * user_ctx)
@@ -1560,6 +1564,7 @@ int modbus_mask_write_register_nb(modbus_t *ctx, int addr, uint16_t and_mask, ui
         memcpy(param.req, req, 12 * sizeof(uint8_t));
         param.__user_cb = user_cb;
         param.user_ctx = user_ctx;
+        param.est_response_len = compute_response_length_from_request(ctx, req);
         rc = confirmation_queue_push(ctx, &param);
     }
 
@@ -1571,23 +1576,23 @@ int modbus_mask_write_register(modbus_t *ctx, int addr, uint16_t and_mask, uint1
 
     if(rc == 0)
         rc = confirmation_queue_pop_and_execute(ctx);
-    
+
     return rc;
 }
 
-static int _modbus_write_and_read_registers__confirmation(modbus_t *ctx, struct confirmation_params * param) {
+static int _modbus_write_and_read_registers__confirmation(void *ctx, struct confirmation_params * param) {
     int offset;
     int i;
 
-    int rc = _modbus_receive_msg(ctx, param->rsp, MSG_CONFIRMATION);
+    int rc = _modbus_receive_msg((modbus_t *) ctx, param->rsp, MSG_CONFIRMATION);
     if (rc == -1)
         return -1;
 
-    rc = check_confirmation(ctx, param->req, param->rsp, rc);
-        if (rc == -1)
-            return -1;
+    rc = check_confirmation((modbus_t *) ctx, param->req, param->rsp, rc);
+    if (rc == -1)
+        return -1;
 
-    offset = ctx->backend->header_length;
+    offset = ((modbus_t *) ctx)->backend->header_length;
     for (i = 0; i < rc; i++) {
         /* shift reg hi_byte to temp OR with lo_byte */
         param->dest_ui16[i] = (param->rsp[offset + 2 + (i << 1)] << 8) |
@@ -1596,7 +1601,6 @@ static int _modbus_write_and_read_registers__confirmation(modbus_t *ctx, struct 
 
     return rc;
 }
-
 /* Write multiple registers from src array to remote device and read multiple
    registers from remote device to dest array. */
 int modbus_write_and_read_registers_nb(modbus_t *ctx,
@@ -1662,6 +1666,7 @@ int modbus_write_and_read_registers_nb(modbus_t *ctx,
         param.dest_ui16 = dest;
         param.__user_cb = user_cb;
         param.user_ctx = user_ctx;
+        param.est_response_len = compute_response_length_from_request(ctx, req);
         rc = confirmation_queue_push(ctx, &param);
     }
 
@@ -1681,19 +1686,19 @@ int modbus_write_and_read_registers(modbus_t *ctx,
     return rc;
 }
 
-static int _modbus_report_slave_id__confirmation(modbus_t *ctx, struct confirmation_params * param) {
+static int _modbus_report_slave_id__confirmation(void *ctx, struct confirmation_params * param) {
     int i;
     int offset;
 
-    int rc = _modbus_receive_msg(ctx, param->rsp, MSG_CONFIRMATION);
-        if (rc == -1)
-            return -1;
+    int rc = _modbus_receive_msg((modbus_t *) ctx, param->rsp, MSG_CONFIRMATION);
+    if (rc == -1)
+        return -1;
 
-    rc = check_confirmation(ctx, param->req, param->rsp, rc);
-        if (rc == -1)
-            return -1;
+    rc = check_confirmation((modbus_t *) ctx, param->req, param->rsp, rc);
+    if (rc == -1)
+        return -1;
 
-    offset = ctx->backend->header_length + 2;
+    offset = ((modbus_t *) ctx)->backend->header_length + 2;
 
     /* Byte count, slave id, run indicator status and
         additional data. Truncate copy to max_dest. */
@@ -1732,6 +1737,7 @@ int modbus_report_slave_id_nb(modbus_t *ctx, int max_dest, uint8_t *dest, confir
         param.dest_ui8 = dest;
         param.__user_cb = user_cb;
         param.user_ctx = user_ctx;
+        param.est_response_len = compute_response_length_from_request(ctx, req);
         rc = confirmation_queue_push(ctx, &param);
     }
 
@@ -1816,7 +1822,7 @@ static int confirmation_queue_push(modbus_t *ctx, const struct confirmation_para
     ctx->confirmation_queue_used_cnt++;
 
     return 0;
-}
+    }    
 static int confirmation_queue_pop(modbus_t *ctx, struct confirmation_params * const params_out)
 {
     if(ctx->confirmation_queue_used_cnt == 0)
@@ -1848,7 +1854,7 @@ static int confirmation_queue_pop_and_execute(modbus_t *ctx)
     if(rc != 0)
         return rc;
 
-    rc = param.__confirmation_cb(ctx, &param);
+    rc = param.__confirmation_cb((void *) ctx, &param);
     if(rc >= 0 && param.__user_cb != NULL)
         param.__user_cb(&param);
 
@@ -1857,10 +1863,24 @@ static int confirmation_queue_pop_and_execute(modbus_t *ctx)
 
 int modbus_process_all_rx(modbus_t *ctx) {
     int rc = 0;
+    fd_set rset;
+    
+    FD_ZERO(&rset);
+    FD_SET(ctx->s, &rset);
+
+fprintf(stdout, "l: %d\n", __LINE__);
     while (ctx->confirmation_queue_used_cnt) {
-        confirmation_queue_pop_and_execute(ctx);
+fprintf(stdout, "l: %d\n", __LINE__);
+        int select_rc = ctx->backend->select(ctx, &rset, NULL, ctx->confirmation_queue_used_start->est_response_len);
+fprintf(stdout, "l: %d, select_rc: %d, ctx->confirmation_queue_used_start->est_response_len: %d\n", __LINE__, select_rc, ctx->confirmation_queue_used_start->est_response_len);
+        if(select_rc < (ctx->confirmation_queue_used_start->est_response_len * 8))
+            return rc;
+fprintf(stdout, "l: %d\n", __LINE__);
+        int confirmation_rc = confirmation_queue_pop_and_execute(ctx);
         rc++;
+fprintf(stdout, "l: %d\n", __LINE__);
     }
+fprintf(stdout, "l: %d\n", __LINE__);
     return rc;
 }
 

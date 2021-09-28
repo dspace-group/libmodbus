@@ -182,7 +182,7 @@ struct confirmation_params {
     /* private */
     struct confirmation_params * __prev;
     struct confirmation_params * __next;
-    int (*__confirmation_cb)(modbus_t *ctx, struct confirmation_params *);
+    int (*__confirmation_cb)(void *ctx, struct confirmation_params *);
     confirmation_user_cb __user_cb;
 
     /* public */
@@ -192,6 +192,7 @@ struct confirmation_params {
     uint8_t *dest_ui8;
     uint16_t *dest_ui16;
     int max_dest;
+    unsigned int est_response_len;
     
     void * user_ctx;
 };
