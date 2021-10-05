@@ -1868,19 +1868,15 @@ int modbus_process_all_rx(modbus_t *ctx) {
     FD_ZERO(&rset);
     FD_SET(ctx->s, &rset);
 
-fprintf(stdout, "l: %d\n", __LINE__);
     while (ctx->confirmation_queue_used_cnt) {
-fprintf(stdout, "l: %d\n", __LINE__);
-        int select_rc = ctx->backend->select(ctx, &rset, NULL, ctx->confirmation_queue_used_start->est_response_len);
-fprintf(stdout, "l: %d, select_rc: %d, ctx->confirmation_queue_used_start->est_response_len: %d\n", __LINE__, select_rc, ctx->confirmation_queue_used_start->est_response_len);
-        if(select_rc < (ctx->confirmation_queue_used_start->est_response_len * 8))
+        int select_rc = ctx->backend->select(ctx, &rset, NULL, 0) / 8;
+        if(select_rc < (int) ctx->confirmation_queue_used_start->est_response_len)
             return rc;
-fprintf(stdout, "l: %d\n", __LINE__);
+
         int confirmation_rc = confirmation_queue_pop_and_execute(ctx);
         rc++;
-fprintf(stdout, "l: %d\n", __LINE__);
     }
-fprintf(stdout, "l: %d\n", __LINE__);
+
     return rc;
 }
 
@@ -2043,6 +2039,12 @@ void modbus_close(modbus_t *ctx)
         return;
 
     ctx->backend->close(ctx);
+
+    /* Clean confirmation queue */
+    struct confirmation_params param = {0};
+    while (ctx->confirmation_queue_used_cnt) {
+        confirmation_queue_pop(ctx, &param);
+    }
 }
 
 void modbus_free(modbus_t *ctx)
