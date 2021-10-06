@@ -1863,17 +1863,23 @@ static int confirmation_queue_pop_and_execute(modbus_t *ctx)
 
 int modbus_process_all_rx(modbus_t *ctx) {
     int rc = 0;
+    int rxQueueAmount = 0;
     fd_set rset;
     
     FD_ZERO(&rset);
     FD_SET(ctx->s, &rset);
 
     while (ctx->confirmation_queue_used_cnt) {
-        int select_rc = ctx->backend->select(ctx, &rset, NULL, 0) / 8;
-        if(select_rc < (int) ctx->confirmation_queue_used_start->est_response_len)
-            return rc;
+        if(ctx->backend->peek(ctx, &rxQueueAmount) == -1) {
+            _error_print(ctx, "peek");
+            return -1;
+        }
 
-        int confirmation_rc = confirmation_queue_pop_and_execute(ctx);
+        if(rxQueueAmount < (int) ctx->confirmation_queue_used_start->est_response_len) {
+            return 0;
+        }
+
+        confirmation_queue_pop_and_execute(ctx);
         rc++;
     }
 

@@ -739,6 +739,21 @@ static int _modbus_tcp_select(modbus_t *ctx, fd_set *rset, struct timeval *tv, i
     return s_rc;
 }
 
+static int _modbus_tcp_peek(modbus_t *ctx, int * amount) {
+    int s_rc;
+#if defined(_WIN32)
+    s_rc = ioctlsocket(ctx->s, FIONREAD, &amount);
+#else
+    unsigned long res;
+    s_rc = ioctl(ctx->s, FIONREAD, &res);
+    *amount = (int) res;
+#endif
+    if(s_rc != 0) {
+        s_rc = -1;
+    }
+    return s_rc;
+}
+
 static void _modbus_tcp_free(modbus_t *ctx) {
     free(ctx->backend_data);
     free(ctx);
@@ -763,6 +778,7 @@ const modbus_backend_t _modbus_tcp_backend = {
     _modbus_tcp_close,
     _modbus_tcp_flush,
     _modbus_tcp_select,
+    _modbus_tcp_peek,
     _modbus_tcp_free
 };
 
@@ -786,6 +802,7 @@ const modbus_backend_t _modbus_tcp_pi_backend = {
     _modbus_tcp_close,
     _modbus_tcp_flush,
     _modbus_tcp_select,
+    _modbus_tcp_peek,
     _modbus_tcp_free
 };
 

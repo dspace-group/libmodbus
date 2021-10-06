@@ -14,6 +14,7 @@
 #include "unit-test.h"
 
 const int EXCEPTION_RC = 2;
+const int PROCESS_ALL_RX_SLEEP = 1;
 
 enum {
     TCP,
@@ -165,7 +166,7 @@ int main(int argc, char *argv[])
         ASSERT_TRUE(rc == 0, "");
     }
     rc = modbus_process_all_rx(ctx);
-    ASSERT_TRUE(rc == MODBUS_CONFIRMATION_QUEUE_N, "");
+    ASSERT_TRUE(rc == MODBUS_CONFIRMATION_QUEUE_N, "FAILED (queue n is %d)", rc);
     ASSERT_TRUE(confirmationFcn_write_counter == MODBUS_CONFIRMATION_QUEUE_N, "");
     printf("OK\n");    
     /* End if single non-blocking */
@@ -221,6 +222,8 @@ int main(int argc, char *argv[])
         rc = modbus_read_bits_nb(ctx, UT_BITS_ADDRESS, UT_BITS_NB, tab_rp_bits, confirmationFcn_read, NULL);
         ASSERT_TRUE(rc == 0, "");
     }
+
+    sleep(PROCESS_ALL_RX_SLEEP);
     rc = modbus_process_all_rx(ctx);
     ASSERT_TRUE(rc == 10, ""); // 5 x modbus_write_bits_nb() + 5 x modbus_read_bits_nb()
     ASSERT_TRUE(confirmationFcn_write_counter == 5, "Confirmation write counter: %d\n", confirmationFcn_write_counter);
@@ -269,6 +272,7 @@ int main(int argc, char *argv[])
     printf("1/1 modbus_read_input_bits_nb: ");
     ASSERT_TRUE(rc == 0, "FAILED (rc: %d)\n", rc);
 
+    sleep(PROCESS_ALL_RX_SLEEP);
     rc = modbus_process_all_rx(ctx);
     ASSERT_TRUE(rc == 1, ""); // 1 x modbus_read_input_bits_nb()
     ASSERT_TRUE(confirmationFcn_read_counter == 1, "Confirmation read counter: %d\n", confirmationFcn_read_counter);
@@ -313,6 +317,7 @@ int main(int argc, char *argv[])
     printf("2/2 modbus_read_registers: ");
     ASSERT_TRUE(rc == 0, "");
 
+    sleep(PROCESS_ALL_RX_SLEEP);
     rc = modbus_process_all_rx(ctx);
     ASSERT_TRUE(confirmationFcn_write_counter == 1, "FAILED (write not confirmed)");
     ASSERT_TRUE(confirmationFcn_read_counter == 1, "FAILED (read not confirmed)");
@@ -384,6 +389,7 @@ int main(int argc, char *argv[])
     printf("2/5 modbus_read_registers_nb: ");
     ASSERT_TRUE(rc == 0, "");
 
+    sleep(PROCESS_ALL_RX_SLEEP);
     rc = modbus_process_all_rx(ctx);
     ASSERT_TRUE(confirmationFcn_write_counter == 1, "FAILED (write not confirmed)");
     ASSERT_TRUE(confirmationFcn_read_counter == 1, "FAILED (read not confirmed)");
@@ -400,6 +406,7 @@ int main(int argc, char *argv[])
     printf("3/5 modbus_read_registers_nb (0): ");
     ASSERT_TRUE(rc == 0, "");
 
+    sleep(PROCESS_ALL_RX_SLEEP);
     rc = modbus_process_all_rx(ctx);
     ASSERT_TRUE(rc == 1, "");
     ASSERT_TRUE(confirmationFcn_read_counter == 0, "FAILED (read confirmed)");
@@ -423,6 +430,7 @@ int main(int argc, char *argv[])
     printf("4/5 modbus_write_and_read_registers_nb: ");
     ASSERT_TRUE(rc == 0, "");
 
+    sleep(PROCESS_ALL_RX_SLEEP);
     rc = modbus_process_all_rx(ctx);
     ASSERT_TRUE(rc == 1, "");
     ASSERT_TRUE(confirmationFcn_read_counter == 1, "FAILED (read/write not confirmed)");
@@ -465,6 +473,7 @@ int main(int argc, char *argv[])
     printf("1/1 modbus_read_input_registers_nb: ");
     ASSERT_TRUE(rc == 0, "");
 
+    sleep(PROCESS_ALL_RX_SLEEP);
     rc = modbus_process_all_rx(ctx);
     ASSERT_TRUE(rc == 1, "");
     ASSERT_TRUE(confirmationFcn_read_counter == 1, "FAILED (read not confirmed)");
@@ -493,6 +502,7 @@ int main(int argc, char *argv[])
     rc = modbus_mask_write_register_nb(ctx, UT_REGISTERS_ADDRESS, 0xF2, 0x25, confirmationFcn_write, NULL);
     ASSERT_TRUE(rc == 0, "");
 
+    sleep(PROCESS_ALL_RX_SLEEP);
     rc = modbus_process_all_rx(ctx);
     ASSERT_TRUE(rc == 1, "");
     ASSERT_TRUE(confirmationFcn_write_counter == 1, "FAILED (write not confirmed)");
@@ -773,6 +783,7 @@ int main(int argc, char *argv[])
     rc = modbus_report_slave_id_nb(ctx, NB_REPORT_SLAVE_ID, tab_rp_bits, confirmationFcn_read, NULL);
     ASSERT_TRUE(rc == 0, "");
 
+    sleep(PROCESS_ALL_RX_SLEEP);
     rc = modbus_process_all_rx(ctx);
     ASSERT_TRUE(rc == 1, "");
 

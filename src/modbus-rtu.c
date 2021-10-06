@@ -1187,6 +1187,29 @@ static int _modbus_rtu_select(modbus_t *ctx, fd_set *rset,
     return s_rc;
 }
 
+static int _modbus_rtu_peek(modbus_t *ctx, int * amount) {
+    int s_rc;
+
+#if defined(_WIN32)
+    modbus_rtu_t *ctx_rtu = ctx->backend_data;
+    DWORD dwErrors;
+    COMSTAT commStatus;
+    s_rc = ClearCommError(ctx_rtu->w_ser->fd, &dwErrors, &commStatus);
+    if(s_rc == 0) {
+        s_rc = -1;
+    }
+    *amount = (int) commStatus.cbInQue;
+#else
+    unsigned long res;
+    s_rc = ioctl(ctx->s, FIONREAD, &res);
+    *amount = (int) res;
+    if(s_rc != 0) {
+        s_rc = -1;
+    }
+#endif
+    return s_rc;
+}
+
 static void _modbus_rtu_free(modbus_t *ctx) {
     if (ctx->backend_data) {
         free(((modbus_rtu_t *)ctx->backend_data)->device);
@@ -1215,6 +1238,7 @@ const modbus_backend_t _modbus_rtu_backend = {
     _modbus_rtu_close,
     _modbus_rtu_flush,
     _modbus_rtu_select,
+    _modbus_rtu_peek,
     _modbus_rtu_free
 };
 
