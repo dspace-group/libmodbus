@@ -238,6 +238,37 @@ Reply::
     -  linkmb:modbus_reply_exception[3]
 
 
+Non-blocking
+~~~~~~~
+Besides the blocking functions from above, this library provides several non-
+blocking alternatives. The currently supported non-blocking alternative
+functions are::
+    -  modbus_write_register_nb
+    -  modbus_write_bit_nb
+    -  modbus_read_input_bits_nb
+    -  modbus_read_bits_nb
+    -  modbus_read_registers_nb
+    -  modbus_read_input_registers_nb
+    -  modbus_write_and_read_registers_nb
+    -  modbus_write_bits_nb
+    -  modbus_write_registers_nb
+    -  modbus_mask_write_register_nb
+    -  modbus_report_slave_id_nb
+
+This functions works similar to the blocking ones, but all of this functions
+have two more arguments: user_cb and user_ctx::
+    - user_cb is the callback, that is called when the confirmation is
+      processed
+    - user_ctx is the argument, that is provided to the callback (e.g. to pass
+      user context data to the callback)
+
+The functions from above transmits the requests to the remote stations. As long
+as the transmit buffer has enough space, the functions won't block. The
+response from the remote stations are stored in the local station receive
+buffer. To process the received responsed please refer to
+linkmb:modbus_process_all_rx[3].
+
+
 ERROR HANDLING
 --------------
 The libmodbus functions handle errors using the standard conventions found on
