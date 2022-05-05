@@ -1876,7 +1876,7 @@ int modbus_process_all_rx(modbus_t *ctx) {
         }
 
         if(rxQueueAmount < (int) ctx->confirmation_queue_used_start->est_response_len) {
-            return 0;
+            return rc;
         }
 
         confirmation_queue_pop_and_execute(ctx);
