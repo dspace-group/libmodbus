@@ -1849,15 +1849,21 @@ static int confirmation_queue_pop(modbus_t *ctx, struct confirmation_params * co
 }
 static int confirmation_queue_pop_and_execute(modbus_t *ctx)
 {
+    if(ctx->confirmation_queue_used_cnt == 0)
+        return -1;
+
+    /*
+     * Execute
+     */
     struct confirmation_params param = {0};
-    int rc = confirmation_queue_pop(ctx, &param);
-    if(rc != 0)
-        return rc;
+    memcpy(&param, ctx->confirmation_queue_used_start, sizeof(struct confirmation_params));
 
-    rc = param.__confirmation_cb((void *) ctx, &param);
-    if(rc >= 0 && param.__user_cb != NULL)
+    int rc = param.__confirmation_cb((void *) ctx, &param);
+
+    if(rc >= 0 && param.__user_cb != NULL) {
         param.__user_cb(&param);
-
+        confirmation_queue_pop(ctx, &param);
+    }
     return rc;
 }
 
@@ -1876,7 +1882,7 @@ int modbus_process_all_rx(modbus_t *ctx) {
         }
 
         if(rxQueueAmount < (int) ctx->confirmation_queue_used_start->est_response_len) {
-            return rc;
+            return 0;
         }
 
         confirmation_queue_pop_and_execute(ctx);
